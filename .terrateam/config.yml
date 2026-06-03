@@ -1,0 +1,36 @@
+# Optional; terraform is the default engine. Pin if you want to match prod.
+  engine:
+    name: terraform
+
+  dirs:
+    dev:
+      tags: [dev]
+      workspaces:
+        default:
+          tags: []          # <- you'll add "destroy" here to test teardown
+      when_modified:
+        file_patterns:
+          - "dev/*.tf"
+          - "dev/*.tfvars"
+
+  workflows:
+    # ORDER MATTERS: first workflow whose tag_query matches a dirspace wins.
+    # Destroy MUST be listed before the catch-all default.
+    - tag_query: "destroy"
+      plan:
+        - type: init
+        # If your backend needs the workspace_key_prefix at init time (like prod):
+        #   extra_args: ["-backend-config=workspace_key_prefix=<ws>"]
+        - type: plan
+          extra_args: ["-destroy"]
+      apply:
+        - type: init
+        - type: apply
+
+    - tag_query: ""          # default: normal create / update
+      plan:
+        - type: init
+        - type: plan
+      apply:
+        - type: init
+        - type: apply
